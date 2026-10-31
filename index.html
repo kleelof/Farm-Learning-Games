@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Farm Learning Games</title>
+  <meta name="description" content="Four educational farm games for spelling, maths, grammar, and general knowledge.">
+  <link rel="icon" href="assets/images/farm-logo.png" type="image/png">
+  <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+  <main class="page-shell">
+    <div id="game" class="game-shell" aria-live="polite">
+      <div class="sky-art" aria-hidden="true">
+        <div class="world-sun"><span></span><span></span></div>
+      </div>
+
+      <div id="app" class="app-layer">
+        <div class="loading-card">Loading the farm…</div>
+      </div>
+
+      <nav id="game-controls" class="game-controls" aria-label="Game controls" hidden>
+        <button id="home-button" class="round-control" type="button" title="Return to the farm menu" aria-label="Home">→</button>
+        <button id="sound-button" class="round-control" type="button" title="Mute or unmute sound" aria-label="Mute sound">♪</button>
+        <button id="fullscreen-button" class="round-control" type="button" title="Toggle fullscreen" aria-label="Toggle fullscreen">⛶</button>
+      </nav>
+    </div>
+    <p class="desktop-note">Farm Learning Games · Desktop browser edition</p>
+  </main>
+
+  <audio id="theme-audio" src="assets/audio/farm-theme.mp3" loop preload="auto"></audio>
+  <audio id="gary-audio" src="assets/audio/gary-theme.mp3" loop preload="auto"></audio>
+  <audio id="happy-audio" src="assets/audio/happy-chicken.mp3" preload="auto"></audio>
+  <audio id="unhappy-audio" src="assets/audio/unhappy-chicken.mp3" preload="auto"></audio>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

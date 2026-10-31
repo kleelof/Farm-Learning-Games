@@ -1,0 +1,6 @@
+Do you know how to do math?Do you know how to catch a duck?If you answerd YES and YES, then you are ready 
+to play Digit Ducks!When the game begins, you will be given a math 
+problem. One digit will be missing from the 
+problem or answer. Catch the duck with the 
+missing digit and drop it on the big red '?'.Solve as many problems as you can before the 
+duck pen gets full!
