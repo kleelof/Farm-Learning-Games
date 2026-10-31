@@ -214,6 +214,12 @@ button { font: inherit; }
 .answer-button.correct { background: #8ee26f; border-color: #d8ffbe; }
 .answer-button.wrong { background: #ed8175; border-color: #ffd0ca; }
 .answer-button.faded { opacity: .25; }
+.professor-instructions-screen .chicken-layout { animation: game-interface-fade .5s ease both; }
+.professor-instruction-board { position: relative; padding: 0; overflow: hidden; }
+.professor-instruction-board > img { width: 100%; height: 100%; display: block; object-fit: contain; }
+.professor-instruction-board > button { position: absolute; right: 2%; bottom: 3%; width: 50%; height: 25%; border: 0; background: transparent; cursor: pointer; }
+.professor-instruction-board > button:hover { background: #fff26b16; }
+.professor-instruction-board > button:focus-visible { outline: 4px solid #fff16b; outline-offset: -8px; border-radius: 12px; }
 
 /* Suzy Sow */
 .suzy-layout { display: grid; grid-template-columns: 190px 1fr; gap: 18px; height: 100%; }
@@ -274,39 +280,78 @@ button { font: inherit; }
 .duck-instructions-pen p { margin: 0; }
 .duck-instructions-play { justify-self: center; padding: 8px 22px; border: 0; background: transparent; color: white; font: 900 33px/1 "Farm Display", "Arial Black", sans-serif; text-shadow: 3px 3px 1px #263746; cursor: pointer; }
 .duck-instructions-play:hover { color: #fff36c; transform: scale(1.06); }
-.duck-layout { display: grid; grid-template-columns: 285px 1fr; gap: 18px; height: 100%; }
-.problem-panel { padding: 25px 18px; text-align: center; }
-.math-problem { width: 190px; margin: 20px auto 22px; font: 900 43px/1.05 "Trebuchet MS", sans-serif; letter-spacing: .06em; text-align: right; }
-.duck-equation-line { display: block; min-height: 48px; }
+.duck-game-screen { position: absolute; inset: 0; overflow: hidden; }
+.duck-layout { display: grid; grid-template-columns: 350px 1fr; gap: 0; height: 100%; }
+.problem-panel { padding: 40px 30px 24px; text-align: center; }
+.duck-calculation-area { position: relative; z-index: 3; border: 0; border-radius: 0; background: #ddd8b980; color: white; box-shadow: none; }
+.math-problem { width: 215px; margin: 0 auto; color: white; font: 500 82px/.96 "Trebuchet MS", sans-serif; letter-spacing: .03em; text-align: right; text-shadow: 0 2px 1px #6d654455; }
+.duck-equation-line { display: block; min-height: 82px; }
 .duck-equation-operator { position: relative; }
-.duck-equation-operator b { position: absolute; left: 3px; color: #c72727; }
-.duck-equation-rule { display: block; height: 7px; margin: 5px 0 8px; border-radius: 5px; background: white; }
-.missing-digit { display: inline-grid; place-items: center; width: 42px; height: 48px; color: #b42727; background: #fff5a5; border: 4px dashed #c94a38; border-radius: 9px; }
-.missing-digit.highlight { color: red; background: #69ff6e; border-style: solid; transform: scale(1.12); }
-.missing-digit.correct { color: #1f9f35; background: #dfffc1; border-color: #47bb3d; border-style: solid; }
-.duck-pen { position: relative; overflow: visible; background: #9bd65b; border-color: #975b28; }
-.duck-pen::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: url("../assets/images/fence.png") center/100% 100% no-repeat; opacity: .75; }
-.duck { position: absolute; z-index: 2; width: 90px; height: 105px; display: grid; place-items: center; padding: 0; border: 0; background: transparent; cursor: grab; touch-action: none; filter: drop-shadow(0 4px 1px #2c4b2570); }
-.duck img { width: 90px; height: 105px; object-fit: contain; pointer-events: none; }
-.duck::after { content: attr(data-digit); position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); color: white; font-size: 24px; font-weight: 900; text-shadow: 0 2px 0 #315d32, 1px 0 0 #315d32, -1px 0 0 #315d32; }
+.duck-equation-operator b { position: absolute; left: 0; color: white; font-weight: 500; }
+.duck-equation-rule { display: block; height: 10px; margin: 5px 0 10px; border-radius: 6px; background: white; }
+.missing-digit { display: inline; color: #00ed18; background: transparent; font: inherit; text-shadow: 0 2px 1px #33733355; }
+.missing-digit.highlight { color: #00ff1f; background: #ffffff55; border-radius: 12px; }
+.missing-digit.correct { color: white; background: transparent; }
+.duck-score-display { position: absolute; left: 50%; bottom: 95px; transform: translateX(-50%); color: white; font: 500 72px/1 "Trebuchet MS", sans-serif; text-shadow: 0 0 5px #168ad2, 0 0 8px #168ad2; }
+.duck-pause-button { position: absolute; left: 50%; bottom: 30px; transform: translateX(-50%); padding: 0; border: 0; background: transparent; color: white; font: 500 43px/1 "Trebuchet MS", sans-serif; text-transform: uppercase; cursor: pointer; }
+.duck-pause-button:hover { color: #fff36b; }
+.duck-pen { position: relative; z-index: 4; overflow: visible; background: #347800; border-left: 5px solid #67461f; }
+.duck-pen::after { content: ""; position: absolute; z-index: 5; inset: 0; pointer-events: none; background: url("../assets/images/fence.png") center/100% 100% no-repeat; opacity: .75; }
+.duck { position: absolute; z-index: 2; width: 57.375px; height: 66.9375px; display: grid; place-items: center; padding: 0; border: 0; background: transparent; cursor: grab; touch-action: none; filter: drop-shadow(0 4px 1px #2c4b2570); }
+.duck img { width: 57.375px; height: 66.9375px; object-fit: contain; pointer-events: none; }
+.duck::after { content: attr(data-digit); position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); color: white; font-size: 18px; font-weight: 900; text-shadow: 0 2px 0 #315d32, 1px 0 0 #315d32, -1px 0 0 #315d32; }
 .duck.dragging { cursor: grabbing; transform: scale(1.18); z-index: 10; }
 .duck.grabbed { filter: drop-shadow(0 8px 2px #243c2466); }
-.duck.grabbed::after { top: 48%; font-size: 27px; }
+.duck.grabbed::after { top: 48%; font-size: 20px; }
+.duck-game-over { position: absolute; z-index: 20; left: 50%; top: 50%; width: 355px; height: 176px; transform: translate(-50%, -50%); }
+.duck-game-over img { width: 100%; height: 100%; display: block; }
+.duck-game-over button { position: absolute; left: 14%; right: 14%; bottom: 10%; height: 40%; border: 0; background: transparent; cursor: pointer; }
+.duck-game-over button:hover { background: #ffffff18; }
+.duck-pause-overlay { position: absolute; z-index: 30; inset: 0; display: grid; place-items: center; background: #f3efdbaa; }
+.duck-pause-overlay button { padding: 18px 50px; border: 5px solid #178dd1; border-radius: 18px; background: white; color: #168ad2; font: 500 46px/1 "Trebuchet MS", sans-serif; cursor: pointer; }
 
 /* Gary Goat */
-.gary-field { position: relative; height: 100%; overflow: hidden; background: linear-gradient(#73cdee 0 45%, #79bb48 45%); border-color: #7d4c24; cursor: crosshair; }
-.gary-field::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: url("../assets/images/fence.png") center/100% 100% no-repeat; opacity: .5; }
-.farmer { position: absolute; z-index: 3; top: 14px; width: 120px; height: 134px; object-fit: contain; object-position: bottom; transform-origin: center; }
-.farmer.faces-right { transform: scaleX(-1); }
-.goat { position: absolute; z-index: 4; bottom: 10px; width: 112px; height: 143px; object-fit: contain; object-position: bottom; transform: translateX(-50%); transform-origin: center bottom; filter: drop-shadow(0 6px 2px #29451d66); transition: left .08s linear; }
+.gary-original-screen { position: absolute; inset: 0; overflow: hidden; background: #08bfe5; }
+.gary-field { position: absolute; inset: 18px 24px 16px; overflow: hidden; border-radius: 11px; background: #08c1e6; cursor: crosshair; }
+.gary-field::after { content: ""; position: absolute; z-index: 6; left: 18px; right: 18px; top: 82px; bottom: 0; pointer-events: none; background: url("../assets/images/fence.png") center/100% 100% no-repeat; }
+.farmer { position: absolute; z-index: 3; top: 24px; width: 154px; height: 152px; object-fit: contain; object-position: bottom; transform: translateX(-50%); transform-origin: center; }
+.farmer.faces-right { transform: translateX(-50%) scaleX(-1); }
+.goat { position: absolute; z-index: 4; bottom: -2px; width: 245px; height: 312px; object-fit: contain; object-position: bottom; transform: translateX(-50%); transform-origin: center bottom; filter: drop-shadow(0 6px 2px #29451d66); }
 .goat.faces-right { transform: translateX(-50%) scaleX(-1); }
 .goat.chomp { animation: goat-chomp .35s ease; }
+.goat.refuse { animation: goat-refuse .32s ease-in-out infinite alternate; filter: drop-shadow(0 6px 2px #29451d66) saturate(.45); }
 @keyframes goat-chomp { 50% { bottom: 20px; filter: drop-shadow(0 8px 2px #29451d66) brightness(1.15); } }
-.falling-word { position: absolute; z-index: 2; transform: translate(-50%, -50%); padding: 7px 12px; border: 3px solid #50321c; border-radius: 12px; background: #fff4bd; color: #1b3b2c; font-size: 19px; font-weight: 900; box-shadow: 0 4px 0 #69412066; }
-.gary-hud { position: absolute; z-index: 8; left: 14px; right: 160px; top: 10px; display: flex; gap: 18px; color: white; font-weight: 900; text-shadow: 0 2px 0 #173a2d; pointer-events: none; }
-.group-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0; }
-.group-option { padding: 18px 8px; border: 4px solid #2d6682; border-radius: 17px; background: #4db4dc; color: white; font-size: 21px; font-weight: 900; cursor: pointer; }
-.group-option:hover { background: #69caee; transform: translateY(-2px); }
+@keyframes goat-refuse { to { margin-left: 9px; filter: drop-shadow(0 6px 2px #29451d66) saturate(.45) brightness(.9); } }
+.falling-word { position: absolute; z-index: 5; transform: translate(-50%, -50%); padding: 5px 11px; border: 0; border-radius: 10px; background: #cb8301cc; color: #fffbe8; font: 900 22px/1 "Farm Rounded", "Arial Black", sans-serif; text-shadow: 2px 2px 1px #74450d; box-shadow: 0 2px 2px #5b350766; }
+.falling-word.word-to-score { z-index: 9; left: 43% !important; top: 18px !important; opacity: 0; transform: translate(-50%, -50%) scale(.55); transition: left .35s ease, top .35s ease, opacity .35s ease, transform .35s ease; }
+.falling-word.bad-word { z-index: 9; left: 78% !important; top: 18px !important; opacity: 0; transform: translate(-50%, -50%) rotate(18deg) scale(.7); transition: left .5s ease, top .5s ease, opacity .5s ease, transform .5s ease; }
+.gary-score-strip { position: absolute; z-index: 8; left: 220px; right: 230px; top: 6px; height: 28px; border-radius: 14px; background: #eefafa; pointer-events: none; }
+.gary-scoreboard { position: absolute; left: 15px; top: -1px; width: 150px; height: 34px; }
+.gary-scoreboard img { position: absolute; left: 0; top: 0; width: 124px; height: 28px; object-fit: contain; object-position: left top; }
+.gary-scoreboard span { position: absolute; left: 104px; top: 2px; color: #111; font: 900 19px/1.2 "Farm Rounded", sans-serif; }
+.gary-health-meter { position: absolute; right: 10px; top: 0; width: 120px; height: 25px; display: grid; place-items: center; background: linear-gradient(90deg, #00d530, #c9f800 52%, #ee1200); color: #13aee6; font: 900 italic 20px/1 "Farm Rounded", sans-serif; text-shadow: 1px 1px 0 #183e53; }
+.gary-target-label { position: absolute; z-index: 8; left: 50%; top: 38px; transform: translateX(-50%); color: #fff462; font: 900 27px/1 "Farm Display", "Arial Black", sans-serif; text-shadow: 3px 3px 1px #374f97; pointer-events: none; }
+.gary-static-farmer { left: 285px; }
+.gary-static-goat { left: 52%; }
+.gary-instructions-board { position: absolute; z-index: 15; left: 55px; right: 55px; top: 175px; height: 370px; animation: game-interface-fade .55s ease both; }
+.gary-instructions-board img { width: 100%; height: 100%; object-fit: fill; }
+.gary-instructions-board button { position: absolute; right: 42px; bottom: 24px; width: 145px; height: 62px; border: 0; background: transparent; cursor: pointer; }
+.gary-instructions-board button:hover { filter: brightness(1.2); }
+.gary-group-selector { position: absolute; z-index: 15; left: 50%; top: 48%; width: 210px; height: 210px; transform: translate(-50%, -50%); }
+.gary-group-selector > img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gary-group-options { position: absolute; left: 7px; right: 7px; top: 51px; display: grid; }
+.group-option { height: 32px; padding: 0 7px; border: 0; border-bottom: 1px solid #1cc198; background: #149e70d9; color: white; font: 900 16px/1 "Farm Rounded", sans-serif; cursor: pointer; }
+.group-option:hover, .group-option.selected { color: #fff63b; background: #087d5e; text-shadow: 1px 1px 0 #274857; }
+.gary-group-start { position: absolute; left: 7px; right: 7px; bottom: 5px; height: 32px; border: 0; background: transparent; color: transparent; cursor: pointer; }
+.gary-group-start:hover { background: #fff63b22; }
+.gary-pause-button { position: absolute; z-index: 10; right: 30px; bottom: 8px; padding: 3px 8px; border: 0; background: #fff700; color: #ca8500; font: 900 35px/1 "Farm Display", "Arial Black", sans-serif; cursor: pointer; }
+.gary-pause-button:hover { color: #9b5800; transform: scale(1.04); }
+.gary-pause-overlay { position: absolute; z-index: 25; inset: 0; display: grid; place-items: center; background: #08c1e666; }
+.gary-pause-overlay button { width: 260px; padding: 15px; border: 7px solid #8e4e14; background: #fff400; color: #b46e00; font: 900 45px/1 "Farm Display", sans-serif; cursor: pointer; }
+.gary-game-over { position: absolute; z-index: 25; left: 50%; top: 48%; width: 330px; min-height: 190px; padding: 24px 18px; transform: translate(-50%, -50%); display: grid; justify-items: center; align-content: center; gap: 15px; border: 7px solid #9b5b1d; background: linear-gradient(#ffef91, #fff5b8); color: #9c501d; text-align: center; font: 900 18px/1.1 "Farm Rounded", sans-serif; box-shadow: 0 4px 0 #4f2a0c88; }
+.gary-game-over strong { font: 900 40px/1 "Farm Display", sans-serif; }
+.gary-game-over button { border: 0; background: transparent; color: #9c501d; font: 900 34px/1 "Farm Display", sans-serif; cursor: pointer; }
+.gary-game-over button:hover { color: #e68a00; }
 .feedback-pop { position: absolute; z-index: 20; left: 50%; top: 45%; transform: translate(-50%, -50%); font-size: 38px; font-weight: 900; color: white; text-shadow: 0 3px 0 #173a2d; pointer-events: none; animation: pop-away .7s forwards; }
 @keyframes pop-away { 0% { opacity: 0; transform: translate(-50%, -40%) scale(.6); } 25% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); } 100% { opacity: 0; transform: translate(-50%, -85%) scale(1); } }
 

@@ -10,6 +10,8 @@ const happyAudio = document.querySelector("#happy-audio");
 const unhappyAudio = document.querySelector("#unhappy-audio");
 const grabDuckAudio = new Audio("originalswfs/farmgameswf/sounds/7_grabDuck.mp3");
 const correctDuckAudio = new Audio("originalswfs/farmgameswf/sounds/6_correctDuck.mp3");
+const throwWordAudio = new Audio("originalswfs/farmgameswf/sounds/3_Throw.mp3");
+const wordCompletedAudio = new Audio("originalswfs/farmgameswf/sounds/1_WordCompleted.mp3");
 
 let config;
 let muted = false;
@@ -41,7 +43,7 @@ const gameInfo = {
     animal: "🐐",
     art: "assets/images/gary-menu.png",
     summary: "Catch nouns, verbs, or adjectives without eating the wrong words.",
-    instructions: "Choose a grammar group. Move Gary with the mouse. When a falling word reaches Gary, click to eat it. Correct words earn points. Three wrong words end the game.",
+    instructions: "Choose a grammar group, then move Gary with the mouse and click when a word reaches him. Eat words from the chosen group and let the others fall. Eating a wrong word or missing a correct one makes Gary ill. Three mistakes end the game.",
     start: showGaryGroupSelector
   },
   ducks: {
@@ -282,6 +284,14 @@ function showInstructions(key) {
     showDigitDucksInstructions();
     return;
   }
+  if (key === "gary") {
+    showGaryInstructions();
+    return;
+  }
+  if (key === "professor") {
+    showProfessorInstructions();
+    return;
+  }
   beginView({ showControls: true, music: key === "gary" ? "gary" : "theme" });
   gameShell.classList.add(`world-${key}`);
   app.innerHTML = `
@@ -369,6 +379,25 @@ function popFeedback(container, text) {
 }
 
 // Professor Chicken ---------------------------------------------------------
+
+function showProfessorInstructions() {
+  beginView({ showControls: true, music: "theme" });
+  setCurrentGame("professor");
+  gameShell.classList.add("world-professor");
+  app.innerHTML = `
+    <section class="screen professor-instructions-screen">
+      <header class="screen-header"><h1>Professor Chicken</h1></header>
+      <div class="chicken-layout">
+        <img class="chicken-character" src="assets/original/professor/1.png" alt="Professor Chicken">
+        <div class="blackboard panel professor-instruction-board">
+          <img src="originalswfs/farmgameswf/sprites/DefineSprite_246_com.Games.ProfessorChicken.PCInstructions/1.png" alt="Professor Chicken has a little quiz for you. Can you be a Chicken Professor or are you just a Hatchling? Find out by answering Professor Chicken's trivia questions.">
+          <button id="professor-play" type="button" aria-label="Play Professor Chicken"></button>
+        </div>
+      </div>
+    </section>
+  `;
+  document.querySelector("#professor-play").addEventListener("click", startProfessorChicken);
+}
 
 function startProfessorChicken() {
   beginView({ showControls: true, music: "theme" });
@@ -711,6 +740,7 @@ function startDigitDucks() {
   let duckCount = 0;
   let targetDigit = "0";
   let locked = false;
+  let gamePaused = false;
   let running = true;
   let spawnTimer;
   let nextProblemTimer;
@@ -726,17 +756,19 @@ function startDigitDucks() {
   const grabbedFrames = "originalswfs/farmgameswf/sprites/DefineSprite_45_FarmEducationalGamesPackage_fla.sDuckSquash_101";
   const directionVectors = { nw: [-1, -1], ne: [1, -1], sw: [-1, 1], se: [1, 1] };
   const directions = Object.keys(directionVectors);
+  const fenceInsetX = 32;
+  const fenceInsetY = 108;
 
   app.innerHTML = `
-    <section class="screen">
-      <header class="screen-header"><h1>Digit Ducks</h1><span class="header-stat" id="duck-score">Score: 0</span></header>
+    <section class="duck-game-screen">
       <div class="duck-layout original-duck-layout">
-        <aside class="problem-panel panel">
-          <p>Which digit is missing?</p>
+        <aside class="problem-panel duck-calculation-area">
           <div class="math-problem" id="math-problem"></div>
-          <strong id="duck-count">There are 0 of ${settings.maxDucks} ducks in the pen!</strong>
+          <div class="duck-score-display" id="duck-score" aria-label="Score">0</div>
+          <button class="duck-pause-button" id="duck-pause" type="button">Pause</button>
+          <strong class="visually-hidden" id="duck-count">There are 0 of ${settings.maxDucks} ducks in the pen!</strong>
         </aside>
-        <div class="duck-pen panel" id="duck-pen" aria-label="Duck pen"></div>
+        <div class="duck-pen" id="duck-pen" aria-label="Duck pen"></div>
       </div>
     </section>
   `;
@@ -745,6 +777,21 @@ function startDigitDucks() {
   const problemElement = document.querySelector("#math-problem");
   const scoreElement = document.querySelector("#duck-score");
   const countElement = document.querySelector("#duck-count");
+
+  function getDuckBounds(duck) {
+    const minX = fenceInsetX;
+    const minY = fenceInsetY;
+    return {
+      minX,
+      minY,
+      maxX: Math.max(minX, pen.clientWidth - duck.offsetWidth - fenceInsetX),
+      maxY: Math.max(minY, pen.clientHeight - duck.offsetHeight - fenceInsetY)
+    };
+  }
+
+  function randomBetween(minimum, maximum) {
+    return minimum + Math.floor(Math.random() * Math.max(1, maximum - minimum + 1));
+  }
 
   function nextProblem() {
     if (!problems.length) problems = shuffle(settings.problems);
@@ -767,7 +814,7 @@ function startDigitDucks() {
   }
 
   function spawnDuck() {
-    if (locked) return;
+    if (locked || gamePaused) return;
     const digit = String(Math.floor(Math.random() * 9));
     const duck = document.createElement("button");
     duck.type = "button";
@@ -777,12 +824,11 @@ function startDigitDucks() {
     duck.dataset.digit = digit;
     duck.setAttribute("aria-label", `Duck with digit ${digit}`);
     pen.append(duck);
-    const maxX = Math.max(0, pen.clientWidth - duck.offsetWidth);
-    const maxY = Math.max(0, pen.clientHeight - duck.offsetHeight);
+    const bounds = getDuckBounds(duck);
     const state = {
-      x: Math.floor(Math.random() * Math.max(1, maxX)),
-      y: -duck.offsetHeight,
-      dropY: Math.floor(Math.random() * Math.max(1, maxY)),
+      x: randomBetween(bounds.minX, bounds.maxX),
+      y: bounds.minY,
+      dropY: randomBetween(bounds.minY, bounds.maxY),
       direction,
       frame: 2,
       frameElapsed: 0,
@@ -814,12 +860,11 @@ function startDigitDucks() {
   }
 
   function returnDuckToPen(duck, state) {
-    const maxX = Math.max(0, pen.clientWidth - duck.offsetWidth);
-    const maxY = Math.max(0, pen.clientHeight - duck.offsetHeight);
-    if (state.x < 0 || state.y < 0 || state.x > maxX || state.y > maxY) {
+    const bounds = getDuckBounds(duck);
+    if (state.x < bounds.minX || state.y < bounds.minY || state.x > bounds.maxX || state.y > bounds.maxY) {
       state.status = "returning";
-      state.x = Math.floor(Math.random() * Math.max(1, maxX));
-      state.y = Math.floor(Math.random() * Math.max(1, maxY));
+      state.x = randomBetween(bounds.minX, bounds.maxX);
+      state.y = randomBetween(bounds.minY, bounds.maxY);
       duck.style.transition = "left .3s linear, top .3s linear";
       positionDuck(duck, state);
       window.setTimeout(() => {
@@ -834,7 +879,7 @@ function startDigitDucks() {
 
   function enableDuckDrag(duck, state) {
     duck.addEventListener("pointerdown", (event) => {
-      if (locked) return;
+      if (!running || locked || gamePaused) return;
       event.preventDefault();
       duck.setPointerCapture(event.pointerId);
       state.status = "dragging";
@@ -847,6 +892,7 @@ function startDigitDucks() {
       const penRect = pen.getBoundingClientRect();
 
       const move = (moveEvent) => {
+        if (moveEvent.pointerId !== event.pointerId) return;
         state.x = moveEvent.clientX - penRect.left - duck.offsetWidth / 2;
         state.y = moveEvent.clientY - penRect.top - duck.offsetHeight / 2;
         positionDuck(duck, state);
@@ -856,10 +902,11 @@ function startDigitDucks() {
         problemElement.querySelector(".missing-digit").classList.toggle("highlight", overTarget);
       };
 
-      const release = () => {
-        duck.removeEventListener("pointermove", move);
-        duck.removeEventListener("pointerup", release);
-        duck.removeEventListener("pointercancel", release);
+      const release = (releaseEvent) => {
+        if (releaseEvent.pointerId !== event.pointerId) return;
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", release);
+        window.removeEventListener("pointercancel", release);
         problemElement.querySelector(".missing-digit").classList.remove("highlight");
         const duckRect = duck.getBoundingClientRect();
         const targetRect = problemElement.querySelector(".missing-digit").getBoundingClientRect();
@@ -888,14 +935,14 @@ function startDigitDucks() {
         }
       };
 
-      duck.addEventListener("pointermove", move);
-      duck.addEventListener("pointerup", release);
-      duck.addEventListener("pointercancel", release);
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", release);
+      window.addEventListener("pointercancel", release);
     });
   }
 
   function updateDuckHud() {
-    scoreElement.textContent = `Score: ${score}`;
+    scoreElement.textContent = score;
     countElement.textContent = duckCount === 1
       ? `There is 1 of ${settings.maxDucks} ducks in the pen!`
       : `There are ${duckCount} of ${settings.maxDucks} ducks in the pen!`;
@@ -904,7 +951,7 @@ function startDigitDucks() {
   function animateDucks(time) {
     const delta = Math.min(0.05, (time - previousTime) / 1000);
     previousTime = time;
-    if (!locked) {
+    if (!locked && !gamePaused) {
       ducks.forEach((state, duck) => {
         if (state.status === "dropping") {
           state.y = Math.min(state.dropY, state.y + 150 * delta);
@@ -917,16 +964,15 @@ function startDigitDucks() {
           }
           positionDuck(duck, state);
         } else if (state.status === "walking") {
-          const maxX = Math.max(0, pen.clientWidth - duck.offsetWidth);
-          const maxY = Math.max(0, pen.clientHeight - duck.offsetHeight);
+          const bounds = getDuckBounds(duck);
           const [dx, dy] = directionVectors[state.direction];
           const nextX = state.x + dx * 20 * delta;
           const nextY = state.y + dy * 20 * delta;
           let choices;
-          if (nextX > maxX) choices = ["nw", "sw"];
-          if (nextX < 0) choices = ["ne", "se"];
-          if (nextY > maxY) choices = ["nw", "ne"];
-          if (nextY < 0) choices = ["sw", "se"];
+          if (nextX > bounds.maxX) choices = ["nw", "sw"];
+          if (nextX < bounds.minX) choices = ["ne", "se"];
+          if (nextY > bounds.maxY) choices = ["nw", "ne"];
+          if (nextY < bounds.minY) choices = ["sw", "se"];
           if (choices) {
             state.direction = choices[Math.floor(Math.random() * choices.length)];
           } else {
@@ -956,17 +1002,36 @@ function startDigitDucks() {
   function finishDucks() {
     if (!running) return;
     running = false;
+    locked = true;
     clearInterval(spawnTimer);
     clearTimeout(nextProblemTimer);
     cancelAnimationFrame(animationFrame);
-    showEndCard({
-      title: "The Duck Pen Is Full!",
-      message: `You solved <strong>${score}</strong> maths ${score === 1 ? "problem" : "problems"}.`,
-      animal: "🦆",
-      art: "assets/images/ducks-menu.png",
-      playAgain: startDigitDucks
-    });
+    const overlay = document.createElement("div");
+    overlay.className = "duck-game-over";
+    overlay.innerHTML = `
+      <img src="originalswfs/farmgameswf/sprites/DefineSprite_71_com.Games.DigitDucks.DDGameOver/1.png" alt="Game Over. Play Again">
+      <button type="button" aria-label="Play Digit Ducks again"></button>
+    `;
+    pen.append(overlay);
+    overlay.querySelector("button").addEventListener("click", startDigitDucks);
   }
+
+  function toggleDuckPause() {
+    if (!running || locked) return;
+    gamePaused = !gamePaused;
+    const existing = document.querySelector(".duck-pause-overlay");
+    if (existing) existing.remove();
+    if (gamePaused) {
+      const overlay = document.createElement("div");
+      overlay.className = "duck-pause-overlay";
+      overlay.innerHTML = `<button type="button">Resume</button>`;
+      document.querySelector(".duck-game-screen").append(overlay);
+      overlay.querySelector("button").addEventListener("click", toggleDuckPause);
+    }
+    previousTime = performance.now();
+  }
+
+  document.querySelector("#duck-pause").addEventListener("click", toggleDuckPause);
 
   nextProblem();
   spawnDuck();
@@ -995,24 +1060,63 @@ function parseProblem(text) {
 
 // Gary Goat -----------------------------------------------------------------
 
-function showGaryGroupSelector() {
+function garyBackdropMarkup(extra = "") {
+  return `
+    <div class="gary-field gary-preview-field">
+      <div class="gary-score-strip" aria-hidden="true">
+        <div class="gary-scoreboard"><img src="originalswfs/farmgameswf/sprites/DefineSprite_148_com.Games.GaryGoat.GGScoreBoard/1.png" alt=""><span>0</span></div>
+        <div class="gary-health-meter"><span>Well</span></div>
+      </div>
+      <img class="farmer gary-static-farmer" src="assets/original/farmer/1.png" alt="">
+      <img class="goat gary-static-goat" src="assets/original/gary/19.png" alt="">
+      <div class="gary-target-label">Nouns</div>
+      ${extra}
+    </div>
+  `;
+}
+
+function showGaryInstructions() {
   beginView({ showControls: true, music: "gary" });
+  setCurrentGame("gary");
   gameShell.classList.add("world-gary");
   app.innerHTML = `
-    <section class="modal-card instructions">
-      <img class="mascot-image" src="assets/images/gary-menu.png" alt="Gary Goat">
-      <h2>Select a Group</h2>
-      <p style="text-align:center">Which kind of word should Gary eat?</p>
-      <div class="group-options">
-        ${config.garyGoat.targetGroups.map((group, index) => `<button class="group-option" type="button" data-group="${index}">${escapeHtml(group.title)}</button>`).join("")}
-      </div>
-      <div class="button-row"><button class="secondary-button" id="gary-home" type="button">Farm Menu</button></div>
+    <section class="gary-original-screen">
+      ${garyBackdropMarkup(`
+        <div class="gary-instructions-board">
+          <img src="originalswfs/farmgameswf/sprites/DefineSprite_140_com.Games.GaryGoat.instructions.GGInstructions/1.png" alt="Gary Goat instructions">
+          <button id="gary-instructions-next" type="button" aria-label="Choose a word group"></button>
+        </div>
+      `)}
     </section>
   `;
+  document.querySelector("#gary-instructions-next").addEventListener("click", showGaryGroupSelector);
+}
+
+function showGaryGroupSelector() {
+  beginView({ showControls: true, music: "gary" });
+  setCurrentGame("gary");
+  gameShell.classList.add("world-gary");
+  app.innerHTML = `
+    <section class="gary-original-screen">
+      ${garyBackdropMarkup(`
+        <div class="gary-group-selector" role="dialog" aria-label="Select a word group">
+          <img src="originalswfs/farmgameswf/sprites/DefineSprite_119_com.Games.GaryGoat.TargetGroupSelector/1.png" alt="">
+          <div class="gary-group-options">
+            ${config.garyGoat.targetGroups.map((group, index) => `<button class="group-option${index === 0 ? " selected" : ""}" type="button" data-group="${index}">${escapeHtml(group.title)}</button>`).join("")}
+          </div>
+          <button class="gary-group-start" id="gary-group-start" type="button">Start</button>
+        </div>
+      `)}
+    </section>
+  `;
+  let selectedGroup = 0;
   app.querySelectorAll("[data-group]").forEach((button) => {
-    button.addEventListener("click", () => startGaryGoat(Number(button.dataset.group)));
+    button.addEventListener("click", () => {
+      selectedGroup = Number(button.dataset.group);
+      app.querySelectorAll("[data-group]").forEach((option) => option.classList.toggle("selected", option === button));
+    });
   });
-  document.querySelector("#gary-home").addEventListener("click", transitionToMenu);
+  document.querySelector("#gary-group-start").addEventListener("click", () => startGaryGoat(selectedGroup));
 }
 
 function startGaryGoat(groupIndex) {
@@ -1022,25 +1126,40 @@ function startGaryGoat(groupIndex) {
   const chosenGroup = groups[groupIndex];
   const wordPool = groups.flatMap((group) => group.words.map((word) => ({ word, group: group.title })));
   let score = 0;
-  let health = 3;
-  let goatX = 350;
-  let previousGoatX = goatX;
+  let mistakes = 0;
+  let goatX = 552;
+  let targetGoatX = goatX;
+  let goatFrame = 19;
+  let goatFrameElapsed = 0;
+  let farmerX = 80;
+  let farmerDirection = 1;
+  let farmerFrame = 1;
+  let farmerFrameElapsed = 0;
+  let farmerMode = "walk";
+  let throwElapsed = 0;
+  let throwDelay = 2000;
+  let throwIncrements = 10;
+  let wordsThrown = 0;
+  let scoreMultiplier = 1;
   let lastTime = performance.now();
-  let throwStarted = -Infinity;
-  let currentFarmerFrame = 0;
-  let currentGoatFrame = 0;
   let running = true;
+  let penaltyPaused = false;
+  let gamePaused = false;
   let animationFrame;
-  let spawnTimer;
+  let penaltyTimer;
   const fallingWords = [];
 
   app.innerHTML = `
-    <section class="screen" style="padding:72px 20px 18px">
-      <header class="screen-header"><h1>Gary Goat’s Grammar Grabber</h1></header>
-      <div class="gary-field panel" id="gary-field">
-        <div class="gary-hud"><span>Eat: ${escapeHtml(chosenGroup.title)}</span><span id="gary-score">Score: 0</span><span id="gary-health">Health: ♥♥♥</span></div>
+    <section class="gary-original-screen">
+      <div class="gary-field" id="gary-field">
+        <div class="gary-score-strip">
+          <div class="gary-scoreboard"><img src="originalswfs/farmgameswf/sprites/DefineSprite_148_com.Games.GaryGoat.GGScoreBoard/1.png" alt="Score"><span id="gary-score">0</span></div>
+          <div class="gary-health-meter"><span id="gary-health">Well</span></div>
+        </div>
+        <div class="gary-target-label">${escapeHtml(chosenGroup.title)}</div>
         <img class="farmer" id="farmer" src="assets/original/farmer/1.png" alt="Farmer Fred">
         <img class="goat" id="goat" src="assets/original/gary/19.png" alt="Gary Goat">
+        <button class="gary-pause-button" id="gary-pause" type="button">Pause</button>
       </div>
     </section>
   `;
@@ -1051,47 +1170,48 @@ function startGaryGoat(groupIndex) {
   const scoreElement = document.querySelector("#gary-score");
   const healthElement = document.querySelector("#gary-health");
   goat.style.left = `${goatX}px`;
+  farmer.style.left = `${farmerX}px`;
 
-  function moveGoat(event) {
+  function aimGoat(event) {
     const rect = field.getBoundingClientRect();
-    const nextGoatX = Math.max(55, Math.min(field.clientWidth - 55, event.clientX - rect.left));
-    if (Math.abs(nextGoatX - previousGoatX) > 2) {
-      goat.classList.toggle("faces-right", nextGoatX > previousGoatX);
-    }
-    goatX = nextGoatX;
-    previousGoatX = nextGoatX;
-    goat.style.left = `${goatX}px`;
+    targetGoatX = Math.max(123, Math.min(field.clientWidth - 123, event.clientX - rect.left));
   }
 
-  function throwWord() {
-    if (!running) return;
-    throwStarted = performance.now();
+  function releaseWord() {
+    if (!running || penaltyPaused || gamePaused) return;
     const data = wordPool[Math.floor(Math.random() * wordPool.length)];
     const element = document.createElement("div");
     element.className = "falling-word";
     element.textContent = data.word;
     field.append(element);
-    const farmerX = Number.parseFloat(farmer.style.left) || field.clientWidth / 2;
     fallingWords.push({
       element,
       word: data.word,
       group: data.group,
-      x: farmerX + 60,
-      y: 95,
-      speed: 72 + Math.random() * 40
+      x: farmerX,
+      y: 105
     });
+    wordsThrown += 1;
+    if (wordsThrown >= throwIncrements) {
+      wordsThrown = 0;
+      throwIncrements = Math.max(1, throwIncrements - 1);
+      throwDelay = Math.max(50, throwDelay - 50);
+      scoreMultiplier += 0.5;
+    }
   }
 
   function eatWord() {
-    if (!running) return;
-    const goatY = field.clientHeight - 72;
+    if (!running || penaltyPaused || gamePaused) return;
+    const goatTop = field.clientHeight - 312;
+    const goatHeadY = goatTop + 85;
     let nearest;
     let bestDistance = Infinity;
     fallingWords.forEach((word) => {
       const dx = Math.abs(word.x - goatX);
-      const dy = Math.abs(word.y - goatY);
+      const dy = Math.abs(word.y - goatHeadY);
       const distance = dx + dy;
-      if (dx < 82 && dy < 85 && distance < bestDistance) {
+      const overlapsGoat = word.y > goatTop + 10 && word.y < field.clientHeight - 8;
+      if (dx < 112 && overlapsGoat && distance < bestDistance) {
         nearest = word;
         bestDistance = distance;
       }
@@ -1100,82 +1220,168 @@ function startGaryGoat(groupIndex) {
 
     const index = fallingWords.indexOf(nearest);
     fallingWords.splice(index, 1);
-    nearest.element.remove();
-    goat.classList.remove("chomp");
-    requestAnimationFrame(() => goat.classList.add("chomp"));
-    setTimeout(() => goat.classList.remove("chomp"), 350);
     if (nearest.group === chosenGroup.title) {
-      score += 1;
-      scoreElement.textContent = `Score: ${score}`;
-      popFeedback(field, "+1 Good word!");
+      nearest.element.classList.add("word-to-score");
+      window.setTimeout(() => nearest.element.remove(), 350);
+      goat.classList.remove("chomp");
+      requestAnimationFrame(() => goat.classList.add("chomp"));
+      window.setTimeout(() => goat.classList.remove("chomp"), 350);
+      score += Math.floor(scoreMultiplier);
+      scoreElement.textContent = score;
+      popFeedback(field, `+${Math.floor(scoreMultiplier)} Good word!`);
+      playEffect(wordCompletedAudio);
     } else {
-      health -= 1;
-      healthElement.textContent = `Health: ${"♥".repeat(health)}${"♡".repeat(3 - health)}`;
-      popFeedback(field, `That was ${nearest.group}`);
-      if (health <= 0) finishGary();
+      penalize(nearest, `That was ${nearest.group}`);
     }
+  }
+
+  function penalize(word, message) {
+    if (!running || penaltyPaused) return;
+    const index = fallingWords.indexOf(word);
+    if (index >= 0) fallingWords.splice(index, 1);
+    penaltyPaused = true;
+    mistakes += 1;
+    word.element.classList.add("bad-word");
+    window.setTimeout(() => word.element.remove(), 500);
+    goat.classList.remove("chomp");
+    goat.classList.add("refuse");
+    healthElement.textContent = mistakes === 1 ? "Queasy" : "Sick";
+    popFeedback(field, message);
+    playEffect(unhappyAudio);
+    if (mistakes >= 3) {
+      penaltyTimer = window.setTimeout(finishGary, 650);
+      return;
+    }
+    penaltyTimer = window.setTimeout(() => {
+      goat.classList.remove("refuse");
+      penaltyPaused = false;
+      lastTime = performance.now();
+    }, 2000);
   }
 
   function update(time) {
     if (!running) return;
     const delta = Math.min(0.05, (time - lastTime) / 1000);
     lastTime = time;
-    const farmerX = (Math.sin(time / 1150) * 0.5 + 0.5) * (field.clientWidth - 100);
-    farmer.style.left = `${farmerX}px`;
-    farmer.classList.toggle("faces-right", Math.cos(time / 1150) > 0);
 
-    const throwElapsed = time - throwStarted;
-    const nextFarmerFrame = throwElapsed >= 0 && throwElapsed < 800
-      ? 39 + Math.min(23, Math.floor((throwElapsed / 800) * 24))
-      : 1 + (Math.floor(time / 85) % 35);
-    if (nextFarmerFrame !== currentFarmerFrame) {
-      currentFarmerFrame = nextFarmerFrame;
-      farmer.src = `assets/original/farmer/${currentFarmerFrame}.png`;
-    }
+    if (!penaltyPaused && !gamePaused) {
+      const difference = targetGoatX - goatX;
+      const walking = Math.abs(difference) > 10;
+      if (walking) {
+        const direction = Math.sign(difference);
+        const distance = Math.min(Math.abs(difference) - 10, 150 * delta);
+        goatX += direction * distance;
+        goat.style.left = `${goatX}px`;
+        goat.classList.toggle("faces-right", direction > 0);
+        goatFrameElapsed += delta;
+        if (goatFrameElapsed >= 0.075) {
+          goatFrameElapsed = 0;
+          goatFrame = goatFrame >= 37 ? 19 : goatFrame + 1;
+          goat.src = `assets/original/gary/${goatFrame}.png`;
+        }
+      } else if (goatFrame !== 19) {
+        goatFrame = 19;
+        goat.src = "assets/original/gary/19.png";
+      }
 
-    const nextGoatFrame = 19 + (Math.floor(time / 80) % 19);
-    if (nextGoatFrame !== currentGoatFrame) {
-      currentGoatFrame = nextGoatFrame;
-      goat.src = `assets/original/gary/${currentGoatFrame}.png`;
-    }
-    for (let i = fallingWords.length - 1; i >= 0; i -= 1) {
-      const word = fallingWords[i];
-      word.y += word.speed * delta;
-      word.element.style.left = `${word.x}px`;
-      word.element.style.top = `${word.y}px`;
-      if (word.y > field.clientHeight + 30) {
-        word.element.remove();
-        fallingWords.splice(i, 1);
+      if (farmerMode === "walk") {
+        farmerX += farmerDirection * 60 * delta;
+        const farmerHalfWidth = 77;
+        if (farmerX <= 50 + farmerHalfWidth) {
+          farmerX = 50 + farmerHalfWidth;
+          farmerDirection = 1;
+        } else if (farmerX >= field.clientWidth - 50 - farmerHalfWidth) {
+          farmerX = field.clientWidth - 50 - farmerHalfWidth;
+          farmerDirection = -1;
+        }
+        farmer.style.left = `${farmerX}px`;
+        farmer.classList.toggle("faces-right", farmerDirection > 0);
+        farmerFrameElapsed += delta;
+        if (farmerFrameElapsed >= 0.075) {
+          farmerFrameElapsed = 0;
+          farmerFrame = farmerFrame >= 37 ? 1 : farmerFrame + 1;
+          farmer.src = `assets/original/farmer/${farmerFrame}.png`;
+        }
+        throwElapsed += delta * 1000;
+        if (throwElapsed >= throwDelay) {
+          throwElapsed = 0;
+          farmerMode = "throw";
+          farmerFrame = 38;
+          farmerFrameElapsed = 0;
+          farmer.src = "assets/original/farmer/38.png";
+          playEffect(throwWordAudio);
+        }
+      } else {
+        farmerFrameElapsed += delta;
+        if (farmerFrameElapsed >= 0.04) {
+          farmerFrameElapsed = 0;
+          farmerFrame += 1;
+          if (farmerFrame === 50) releaseWord();
+          if (farmerFrame > 62) {
+            farmerFrame = 1;
+            farmerMode = "walk";
+          }
+          farmer.src = `assets/original/farmer/${farmerFrame}.png`;
+        }
+      }
+
+      for (let i = fallingWords.length - 1; i >= 0; i -= 1) {
+        const word = fallingWords[i];
+        word.y += 90 * delta;
+        word.element.style.left = `${word.x}px`;
+        word.element.style.top = `${word.y}px`;
+        if (word.y > field.clientHeight - 14) {
+          if (word.group === chosenGroup.title) {
+            penalize(word, `Gary missed ${word.word}`);
+            break;
+          }
+          word.element.remove();
+          fallingWords.splice(i, 1);
+        }
       }
     }
     animationFrame = requestAnimationFrame(update);
   }
 
   function finishGary() {
+    if (!running) return;
     running = false;
-    clearInterval(spawnTimer);
+    clearTimeout(penaltyTimer);
     cancelAnimationFrame(animationFrame);
-    showEndCard({
-      title: "Gary Has a Tummy Ache!",
-      message: `Gary correctly ate <strong>${score}</strong> ${escapeHtml(chosenGroup.title.toLowerCase())}.`,
-      animal: "🐐",
-      art: "assets/images/gary-menu.png",
-      playAgain: showGaryGroupSelector,
-      music: "gary"
-    });
+    const overlay = document.createElement("div");
+    overlay.className = "gary-game-over";
+    overlay.innerHTML = `<strong>Game Over</strong><span>Gary ate ${score} correct ${escapeHtml(chosenGroup.title.toLowerCase())}.</span><button type="button">Play Again</button>`;
+    field.append(overlay);
+    overlay.querySelector("button").addEventListener("click", showGaryGroupSelector);
   }
 
-  field.addEventListener("pointermove", moveGoat);
+  function togglePause(event) {
+    event.stopPropagation();
+    if (!running || penaltyPaused) return;
+    gamePaused = !gamePaused;
+    const existing = field.querySelector(".gary-pause-overlay");
+    if (existing) existing.remove();
+    if (gamePaused) {
+      const overlay = document.createElement("div");
+      overlay.className = "gary-pause-overlay";
+      overlay.innerHTML = `<button type="button">Resume</button>`;
+      field.append(overlay);
+      overlay.querySelector("button").addEventListener("click", togglePause);
+    }
+    lastTime = performance.now();
+  }
+
+  field.addEventListener("pointermove", aimGoat);
   field.addEventListener("pointerdown", (event) => {
-    moveGoat(event);
+    aimGoat(event);
     eatWord();
   });
-  throwWord();
-  spawnTimer = window.setInterval(throwWord, 1250);
+  document.querySelector("#gary-pause").addEventListener("pointerdown", (event) => event.stopPropagation());
+  document.querySelector("#gary-pause").addEventListener("click", togglePause);
   animationFrame = requestAnimationFrame(update);
   cleanupCurrent = () => {
     running = false;
-    clearInterval(spawnTimer);
+    clearTimeout(penaltyTimer);
     cancelAnimationFrame(animationFrame);
   };
 }
